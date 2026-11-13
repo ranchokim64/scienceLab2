@@ -117,26 +117,36 @@ export function MissionPanel({ missions, index, setIndex, locked, completed, pre
   return (
     <>
       <nav className="mission-chips" aria-label="미션 고르기">
-        {missions.map((mm, i) => (
-          <button
-            key={mm.id}
-            className={`chip ${i === index ? 'on' : ''} ${completed[mm.id] ? 'done' : ''}`}
-            onClick={() => setIndex(i)}
-            disabled={locked && i !== index}
-            title={mm.title}
-            aria-label={`미션 ${i + 1}. ${mm.title}`}
-          >
-            {completed[mm.id] ? '✓' : i + 1}
-          </button>
+        {groupByLesson(missions).map(({ lesson, items }) => (
+          <div key={lesson} className="chip-group">
+            <div className="chip-group-label">{lesson}</div>
+            <div className="chip-row">
+              {items.map(({ m: mm, i }) => (
+                <button
+                  key={mm.id}
+                  className={`chip ${i === index ? 'on' : ''} ${completed[mm.id] ? 'done' : ''}`}
+                  onClick={() => setIndex(i)}
+                  disabled={locked && i !== index}
+                  title={mm.title}
+                  aria-label={`미션 ${i + 1}. ${mm.title}`}
+                >
+                  {completed[mm.id] ? '✓' : i + 1}
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
 
       <div className="card mission">
-        <div className="mission-no">미션 {index + 1}</div>
+        <div className="mission-no">
+          미션 {index + 1} · {m.lesson.name}
+        </div>
         <h2>
           {m.title} <Speak text={`${m.title}. ${m.steps.join(' ')}`} />
         </h2>
         <div className="goal">🎯 {m.goal}</div>
+        {m.lesson.pages && <div className="lesson-ref">📘 비상 {m.lesson.pages}</div>}
         <ol className="steps">
           {m.steps.map((s) => (
             <li key={s}>{s}</li>
@@ -206,6 +216,8 @@ export function MissionPanel({ missions, index, setIndex, locked, completed, pre
         </div>
       )}
 
+      {m.id === 'saving' && <BatteryMeter circuit={circuit} sol={sol} />}
+
       {m.id === 'remove' && (
         <div className="card">
           <div className="card-title">📝 관찰 기록</div>
@@ -238,6 +250,18 @@ export function MissionPanel({ missions, index, setIndex, locked, completed, pre
             </div>
           )}
           <p>{m.success}</p>
+          {m.discuss && (
+            <div className="discuss">
+              <div className="card-title">
+                💬 이야기해 봐요 <Speak text={m.discuss.join(' ')} />
+              </div>
+              <ul>
+                {m.discuss.map((q) => (
+                  <li key={q}>{q}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           {index < missions.length - 1 ? (
             <button className="big primary" onClick={() => setIndex(index + 1)}>
               다음 미션 →
@@ -248,5 +272,37 @@ export function MissionPanel({ missions, index, setIndex, locked, completed, pre
         </div>
       )}
     </>
+  );
+}
+
+function groupByLesson(missions: Mission[]) {
+  const groups: { lesson: string; items: { m: Mission; i: number }[] }[] = [];
+  missions.forEach((m, i) => {
+    const last = groups[groups.length - 1];
+    if (last && last.lesson === m.lesson.name) last.items.push({ m, i });
+    else groups.push({ lesson: m.lesson.name, items: [{ m, i }] });
+  });
+  return groups;
+}
+
+/** 전기 절약: 전지에서 나가는 전기의 양을 막대로 보여 준다 */
+function BatteryMeter({ circuit, sol }: { circuit: Circuit; sol: Solution }) {
+  const lit = litBulbs(circuit, sol).length;
+  const total = circuit.parts
+    .filter((p) => p.kind === 'battery')
+    .reduce((s, p) => s + Math.abs(sol.current[p.id] ?? 0), 0);
+  const level = Math.min(5, Math.round(total / 0.15));
+  return (
+    <div className="card">
+      <div className="card-title">🔋 전지에서 나가는 전기</div>
+      <div className="meter" aria-label={`전기 사용량 ${level}칸`}>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <span key={i} className={i < level ? 'on' : ''} />
+        ))}
+      </div>
+      <div>
+        켜진 전등 <b>{lit}개</b> → {level >= 3 ? '전지가 빨리 닳아요 😥' : level > 0 ? '전지를 아끼고 있어요 😊' : '전기가 흐르지 않아요'}
+      </div>
+    </div>
   );
 }

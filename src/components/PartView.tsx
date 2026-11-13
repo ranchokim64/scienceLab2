@@ -320,6 +320,13 @@ export function PartView(props: Props) {
           </g>
         </>
       )}
+      {part.label && (
+        <Upright x={L / 2} y={sym ? -30 : -72} angle={angle}>
+          <text className="name-tag" textAnchor="middle" dominantBaseline="central">
+            {part.label}
+          </text>
+        </Upright>
+      )}
       <Upright x={L / 2} y={sym ? 30 : 24} angle={angle}>
         {part.removed ? <text className="tag warn" textAnchor={anc} dominantBaseline="central">빠짐</text> : <StarRow n={n} anchor={anc} />}
       </Upright>

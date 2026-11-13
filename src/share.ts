@@ -14,6 +14,7 @@ export function encodeCircuit(c: Circuit): string {
     if (part.kind === 'bulb') row.push(part.removed ? 1 : 0);
     if (part.kind === 'object') row.push(MATERIAL_IDS.indexOf(part.material ?? 'clip'));
     if (part.kind === 'coil') row.push(part.turns ?? 1);
+    if (part.label) row.push(part.label);
     return row;
   });
   return toBase64Url(JSON.stringify({ v, p }));
@@ -33,6 +34,8 @@ export function decodeCircuit(s: string): Circuit | null {
       if (kind === 'bulb' && row[3] === 1) part.removed = true;
       if (kind === 'object') part.material = (MATERIAL_IDS[row[3] as number] ?? 'clip') as MaterialId;
       if (kind === 'coil') part.turns = row[3] === 2 ? 2 : 1;
+      const label = row[kind === 'wire' || kind === 'battery' ? 3 : 4];
+      if (typeof label === 'string') part.label = label.slice(0, 12);
       return part;
     });
     return { vertices, parts };

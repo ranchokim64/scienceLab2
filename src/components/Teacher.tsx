@@ -80,7 +80,7 @@ export function TeacherModal({ missions, currentMission, circuit, showNumbers, s
             <select value={m} onChange={(e) => setM(e.target.value)}>
               {missions.map((mm, i) => (
                 <option key={mm.id} value={mm.id}>
-                  미션 {i + 1}. {mm.title}
+                  [{mm.lesson.name}] 미션 {i + 1}. {mm.title}
                 </option>
               ))}
               <option value="free">🧪 자유 실험</option>

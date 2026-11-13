@@ -216,6 +216,9 @@ export default function App() {
       note: '',
     };
     setNotebook((n) => [...n.slice(-19), entry]);
+    if (mode === 'mission' && which === 'a' && litBulbs(store.circuit, s.sol).length > 0) {
+      patchObserved(mission.id, (o) => (o.captured ? o : { ...o, captured: true }));
+    }
     say('📒 기록장에 저장했어요!');
   };
 

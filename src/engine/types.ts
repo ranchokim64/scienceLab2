@@ -39,6 +39,8 @@ export interface Part {
   material?: MaterialId;
   /** 전자석 코일을 감은 정도: 1 = 적게, 2 = 많이 */
   turns?: 1 | 2;
+  /** 부품 위에 붙이는 이름표 (예: 공부방) */
+  label?: string;
 }
 
 export interface Circuit {
