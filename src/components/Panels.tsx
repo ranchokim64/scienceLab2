@@ -109,9 +109,11 @@ interface MissionProps {
   circuit: Circuit;
   sol: Solution;
   arr: Arrangement;
+  /** 10차시 「스스로 확인하기」로 가기 */
+  onQuiz?: () => void;
 }
 
-export function MissionPanel({ missions, index, setIndex, locked, completed, prediction, setPrediction, done, waitingPrediction, observed, circuit, sol, arr }: MissionProps) {
+export function MissionPanel({ missions, index, setIndex, locked, completed, prediction, setPrediction, done, waitingPrediction, observed, circuit, sol, arr, onQuiz }: MissionProps) {
   const m = missions[index];
   const pr = m.prediction;
   return (
@@ -136,6 +138,16 @@ export function MissionPanel({ missions, index, setIndex, locked, completed, pre
             </div>
           </div>
         ))}
+        {onQuiz && (
+          <div className="chip-group">
+            <div className="chip-group-label">10차시</div>
+            <div className="chip-row">
+              <button className="chip quiz-chip" onClick={onQuiz} title="스스로 확인하기" aria-label="10차시 스스로 확인하기 퀴즈">
+                📝
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
 
       <div className="card mission">
@@ -268,6 +280,11 @@ export function MissionPanel({ missions, index, setIndex, locked, completed, pre
             </button>
           ) : (
             <div className="muted">모든 미션을 마쳤어요! 자유 실험에서 더 탐구해 보세요.</div>
+          )}
+          {onQuiz && m.lesson.name === '8~9차시' && (
+            <button className="big" onClick={onQuiz}>
+              📝 10차시 스스로 확인하기 →
+            </button>
           )}
         </div>
       )}

@@ -31,7 +31,7 @@ export function TeacherModal({ missions, currentMission, circuit, showNumbers, s
         lock,
         num,
         sym,
-        c: withCircuit && hasCircuit ? encodeCircuit(circuit) : undefined,
+        c: withCircuit && hasCircuit && m !== 'quiz' ? encodeCircuit(circuit) : undefined,
       }),
     [m, lock, num, sym, withCircuit, hasCircuit, circuit],
   );
@@ -83,11 +83,12 @@ export function TeacherModal({ missions, currentMission, circuit, showNumbers, s
                   [{mm.lesson.name}] 미션 {i + 1}. {mm.title}
                 </option>
               ))}
+              <option value="quiz">[10차시] 📝 스스로 확인하기 퀴즈</option>
               <option value="free">🧪 자유 실험</option>
             </select>
           </label>
           <label className="check">
-            <input type="checkbox" checked={withCircuit} disabled={!hasCircuit} onChange={(e) => setWithCircuit(e.target.checked)} />
+            <input type="checkbox" checked={withCircuit && m !== 'quiz'} disabled={!hasCircuit || m === 'quiz'} onChange={(e) => setWithCircuit(e.target.checked)} />
             지금 화면의 회로를 시작 회로로 함께 보내기 {!hasCircuit && <span className="muted">(회로가 비어 있어요)</span>}
           </label>
           <label className="check">

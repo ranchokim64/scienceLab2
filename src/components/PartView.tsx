@@ -15,6 +15,8 @@ interface Props {
   highlighted: boolean;
   mode?: ViewMode;
   showNumbers?: boolean;
+  /** 퀴즈 그림: 결과(밝기 별, 클립 수)를 숨긴다 */
+  plain?: boolean;
 }
 
 const deg = (r: number) => (r * 180) / Math.PI;
@@ -62,7 +64,7 @@ function Rings({ L, y, h, selected, highlighted }: { L: number; y: number; h: nu
 }
 
 export function PartView(props: Props) {
-  const { part, a, b, brightness, current, magnet, hot, selected, highlighted, mode = 'real', showNumbers } = props;
+  const { part, a, b, brightness, current, magnet, hot, selected, highlighted, mode = 'real', showNumbers, plain } = props;
   const cls = ['part', `part-${part.kind}`, mode === 'symbol' && 'symbol', selected && 'sel', highlighted && 'hl', hot && 'hot']
     .filter(Boolean)
     .join(' ');
@@ -269,9 +271,9 @@ export function PartView(props: Props) {
             <path d="M0 14 L5 0 L-5 0 Z" fill="#64748b" />
           </g>
         </g>
-        <Upright x={L / 2} y={24} angle={angle}>
+        {!plain && <Upright x={L / 2} y={24} angle={angle}>
           {showNumbers ? <Num anchor={anc}>{amps(current)} · 클립 {clips}개</Num> : <text className="tag" textAnchor={anc} dominantBaseline="central">클립 {clips}개</text>}
-        </Upright>
+        </Upright>}
         <rect className="hit" x={0} y={-104} width={L} height={124} />
       </g>
     );
@@ -327,9 +329,9 @@ export function PartView(props: Props) {
           </text>
         </Upright>
       )}
-      <Upright x={L / 2} y={sym ? 30 : 24} angle={angle}>
+      {!plain && <Upright x={L / 2} y={sym ? 30 : 24} angle={angle}>
         {part.removed ? <text className="tag warn" textAnchor={anc} dominantBaseline="central">빠짐</text> : <StarRow n={n} anchor={anc} />}
-      </Upright>
+      </Upright>}
       {showNumbers && !part.removed && (
         <Upright x={L / 2} y={sym ? 48 : 42} angle={angle}>
           <Num anchor={anc}>{amps(current)}</Num>

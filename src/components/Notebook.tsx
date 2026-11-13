@@ -4,7 +4,8 @@ export interface NoteEntry {
   id: string;
   time: number;
   title: string;
-  image: string;
+  /** 회로 그림 (퀴즈 결과처럼 그림이 없는 기록도 있다) */
+  image?: string;
   facts: string[];
   note: string;
 }
@@ -53,7 +54,7 @@ export function NotebookModal({ entries, setEntries, name, setName, onClose }: P
                   </b>
                   <span className="muted">{fmt(e.time)}</span>
                 </div>
-                <img src={e.image} alt={`${e.title} 회로 그림`} />
+                {e.image && <img src={e.image} alt={`${e.title} 회로 그림`} />}
                 <ul className="facts">
                   {e.facts.map((f) => (
                     <li key={f}>{f}</li>
@@ -64,9 +65,11 @@ export function NotebookModal({ entries, setEntries, name, setName, onClose }: P
                   <textarea value={e.note} onChange={(ev) => update(e.id, { note: ev.target.value })} rows={3} placeholder="실험하며 알게 된 점을 써 보세요." />
                 </label>
                 <div className="entry-actions">
-                  <a className="btn" href={e.image} download={`회로-${i + 1}.jpg`}>
-                    🖼 그림 저장
-                  </a>
+                  {e.image && (
+                    <a className="btn" href={e.image} download={`회로-${i + 1}.jpg`}>
+                      🖼 그림 저장
+                    </a>
+                  )}
                   <button
                     className="danger"
                     onClick={() => window.confirm('이 기록을 지울까요?') && setEntries((es) => es.filter((x) => x.id !== e.id))}
@@ -100,7 +103,7 @@ export function PrintSheet({ entries, name, completed }: { entries: NoteEntry[];
             {i + 1}. {e.title}
           </h2>
           <div className="print-row">
-            <img src={e.image} alt="" />
+            {e.image && <img src={e.image} alt="" />}
             <ul>
               {e.facts.map((f) => (
                 <li key={f}>{f}</li>

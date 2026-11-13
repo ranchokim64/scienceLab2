@@ -7,11 +7,12 @@ import { BulbSummary, HintBox, MissionPanel, ReferenceCard, Stars } from './comp
 import { Highlight, Workspace } from './components/Workspace';
 import { NoteEntry, NotebookModal, PrintSheet } from './components/Notebook';
 import { TeacherModal } from './components/Teacher';
+import { QuizView } from './components/Quiz';
 import { ViewMode } from './components/PartView';
 import { CircuitStore, clearAll, loadJSON, saveJSON, useCircuitStores } from './store';
 import { buildShareUrl, decodeCircuit, parseShareHash } from './share';
 
-type Mode = 'mission' | 'free' | 'compare';
+type Mode = 'mission' | 'free' | 'compare' | 'quiz';
 
 function usePersisted<T>(key: string, initial: T, onFail?: () => void) {
   const [v, setV] = useState<T>(() => loadJSON(key, initial));
@@ -37,7 +38,7 @@ function useSolved(store: CircuitStore) {
 /** 주소의 # 뒤(선생님이 보낸 링크)를 처음 한 번 읽는다. */
 const shared = parseShareHash(typeof location !== 'undefined' ? location.hash : '');
 const sharedMissionIndex = MISSIONS.findIndex((m) => m.id === shared.m);
-const locked = shared.lock && (shared.m === 'free' || sharedMissionIndex >= 0);
+const locked = shared.lock && (shared.m === 'free' || shared.m === 'quiz' || sharedMissionIndex >= 0);
 
 export default function App() {
   const [toast, setToast] = useState<string | null>(null);
@@ -57,6 +58,7 @@ export default function App() {
     say('저장 공간이 부족해요. 기록장에서 오래된 기록을 지워 주세요.'),
   );
   const [studentName, setStudentName] = usePersisted('name', '');
+  const [quizBest, setQuizBest] = usePersisted('quizBest', 0);
   const [observed, setObserved] = useState<Record<string, Observed>>({});
   const [hintLevel, setHintLevel] = useState(0);
   const [activeSide, setActiveSide] = useState<'a' | 'b'>('a');
@@ -81,6 +83,7 @@ export default function App() {
     appliedShare.current = true;
     if (!shared.m) return;
     if (shared.m === 'free') setMode('free');
+    else if (shared.m === 'quiz') setMode('quiz');
     else if (sharedMissionIndex >= 0) {
       setMode('mission');
       setMissionIndex(sharedMissionIndex);
@@ -97,6 +100,7 @@ export default function App() {
 
   useEffect(() => {
     if (locked && shared.m === 'free' && mode !== 'free') setMode('free');
+    if (locked && shared.m === 'quiz' && mode !== 'quiz') setMode('quiz');
     if (locked && sharedMissionIndex >= 0 && (mode !== 'mission' || missionIndex !== sharedMissionIndex)) {
       setMode('mission');
       setMissionIndex(sharedMissionIndex);
@@ -229,6 +233,7 @@ export default function App() {
     ['mission', '🎯 미션'],
     ['free', '🧪 자유 실험'],
     ['compare', '⚖️ 비교하기'],
+    ['quiz', '📝 확인하기'],
   ] as const;
 
   return (
@@ -240,7 +245,9 @@ export default function App() {
             <span className="brand-name">반짝 회로 실험실</span>
           </div>
           {locked ? (
-            <div className="locked-badge">🔒 선생님이 정한 {shared.m === 'free' ? '자유 실험' : `미션 ${sharedMissionIndex + 1}`}</div>
+            <div className="locked-badge">
+              🔒 선생님이 정한 {shared.m === 'free' ? '자유 실험' : shared.m === 'quiz' ? '스스로 확인하기' : `미션 ${sharedMissionIndex + 1}`}
+            </div>
           ) : (
             <nav className="tabs" role="tablist">
               {tabs.map(([m, label]) => (
@@ -251,6 +258,8 @@ export default function App() {
             </nav>
           )}
           <div className="actions">
+            {mode !== 'quiz' && (
+              <>
             <button onClick={active.undo} disabled={!active.canUndo} title="되돌리기 (Ctrl+Z)">
               ↶<span className="lbl"> 되돌리기</span>
             </button>
@@ -271,6 +280,8 @@ export default function App() {
             <button onClick={resetActive} title="처음부터">
               🧹<span className="lbl"> 처음부터</span>
             </button>
+              </>
+            )}
             <button onClick={() => setDialog('notebook')} title="관찰 기록장">
               📒<span className="lbl"> 기록장</span>
               {notebook.length > 0 && <span className="count">{notebook.length}</span>}
@@ -283,6 +294,26 @@ export default function App() {
           </div>
         </header>
 
+        {mode === 'quiz' ? (
+          <main className="main-quiz">
+            <QuizView
+              best={quizBest}
+              setBest={setQuizBest}
+              onGoMission={(id) => {
+                if (locked) return;
+                setMode('mission');
+                setMissionIndex(Math.max(0, MISSIONS.findIndex((m) => m.id === id)));
+              }}
+              onSave={(facts) => {
+                setNotebook((n) => [
+                  ...n.slice(-19),
+                  { id: `n${Date.now().toString(36)}`, time: Date.now(), title: '10차시 스스로 확인하기', facts, note: '' },
+                ]);
+                say('📒 기록장에 저장했어요!');
+              }}
+            />
+          </main>
+        ) : (
         <main className={`main mode-${mode}`}>
           <section className="stage">
             <Workspace
@@ -333,6 +364,7 @@ export default function App() {
                 circuit={main.circuit}
                 sol={mainS.sol}
                 arr={mainS.arr}
+                onQuiz={locked ? undefined : () => setMode('quiz')}
               />
             )}
             {mode === 'free' && (
@@ -348,6 +380,7 @@ export default function App() {
             <ReferenceCard />
           </aside>
         </main>
+        )}
 
         {toast && (
           <div className="toast" role="status">
@@ -360,7 +393,7 @@ export default function App() {
         {dialog === 'teacher' && (
           <TeacherModal
             missions={MISSIONS}
-            currentMission={mode === 'mission' ? mission.id : 'free'}
+            currentMission={mode === 'mission' ? mission.id : mode === 'quiz' ? 'quiz' : 'free'}
             circuit={active.circuit}
             showNumbers={localNumbers}
             setShowNumbers={setLocalNumbers}
