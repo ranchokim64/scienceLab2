@@ -26,6 +26,8 @@ export function addPart(c: Circuit, kind: PartKind, center: Vec, angle = 0): { c
   const b = { id: uid('v'), x: center.x + dx, y: center.y + dy };
   const part: Part = { id: uid('p'), kind, a: a.id, b: b.id };
   if (kind === 'switch') part.closed = false;
+  if (kind === 'object') part.material = 'clip';
+  if (kind === 'coil') part.turns = 1;
   return {
     circuit: { vertices: { ...c.vertices, [a.id]: a, [b.id]: b }, parts: [...c.parts, part] },
     partId: part.id,

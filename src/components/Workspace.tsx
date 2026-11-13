@@ -16,10 +16,11 @@ import {
   updatePart,
 } from '../engine/ops';
 import { Solution } from '../engine/solver';
-import { PART_NAME, PartKind, Vec, isRigid } from '../engine/types';
+import { MATERIALS, MATERIAL_IDS, PART_NAME, PartKind, Vec, isRigid } from '../engine/types';
+import { captureCircuit } from '../capture';
 import { CircuitStore } from '../store';
 import { FlowLayer } from './FlowLayer';
-import { PartIcon, PartView } from './PartView';
+import { PartIcon, PartView, ViewMode } from './PartView';
 
 export interface Highlight {
   parts: string[];
@@ -37,6 +38,10 @@ interface Props {
   onActivate?: () => void;
   active?: boolean;
   label?: string;
+  mode?: ViewMode;
+  showNumbers?: boolean;
+  /** 📸 기록하기: 회로 그림을 넘겨준다 */
+  onCapture?: (image: string) => void;
 }
 
 type View = { x: number; y: number; k: number };
@@ -58,11 +63,12 @@ type Drag =
       rotatePartId?: string;
     };
 
-const KINDS: PartKind[] = ['battery', 'bulb', 'switch', 'wire'];
+const KINDS: PartKind[] = ['battery', 'bulb', 'switch', 'wire', 'object', 'coil'];
 const TAP_SLOP = 7;
 const clampK = (k: number) => Math.min(2.5, Math.max(0.4, k));
 
-export function Workspace({ store, sol, limits, showFlow, highlight, onBulbRemoved, onActivate, active = true, label }: Props) {
+export function Workspace(props: Props) {
+  const { store, sol, limits, showFlow, highlight, onBulbRemoved, onActivate, active = true, label, mode = 'real', showNumbers, onCapture } = props;
   const { circuit } = store;
   const svgRef = useRef<SVGSVGElement>(null);
   const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
@@ -377,8 +383,8 @@ export function Workspace({ store, sol, limits, showFlow, highlight, onBulbRemov
               <circle cx={1.5} cy={1.5} r={1.4} fill="#cfd8e6" />
             </pattern>
           </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-          <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
+          <rect data-bg width="100%" height="100%" fill="url(#grid)" />
+          <g data-world transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
             {[...circuit.parts]
               .sort((p, q) => Number(p.kind !== 'wire') - Number(q.kind !== 'wire'))
               .map((p) => (
@@ -388,6 +394,10 @@ export function Workspace({ store, sol, limits, showFlow, highlight, onBulbRemov
                   a={circuit.vertices[p.a]}
                   b={circuit.vertices[p.b]}
                   brightness={sol.brightness[p.id] ?? 0}
+                  current={sol.current[p.id]}
+                  magnet={sol.magnet[p.id]}
+                  mode={mode}
+                  showNumbers={showNumbers}
                   hot={sol.hot.has(p.id)}
                   selected={sel?.type === 'part' && sel.id === p.id}
                   highlighted={hlParts.has(p.id)}
@@ -424,6 +434,25 @@ export function Workspace({ store, sol, limits, showFlow, highlight, onBulbRemov
             )}
             {selPart?.kind === 'bulb' && <button onClick={toggleBulb}>{selPart.removed ? '💡 전구 끼우기' : '🫳 전구 빼기'}</button>}
             {selPart?.kind === 'battery' && <button onClick={() => store.update((c) => flipBattery(c, selPart.id))}>🔄 방향 바꾸기</button>}
+            {selPart?.kind === 'object' && (
+              <div className="material-picker" role="group" aria-label="물체 바꾸기">
+                {MATERIAL_IDS.map((m) => (
+                  <button
+                    key={m}
+                    className={selPart.material === m ? 'picked' : ''}
+                    onClick={() => store.update((c) => updatePart(c, selPart.id, { material: m }))}
+                  >
+                    {MATERIALS[m].name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {selPart?.kind === 'coil' && (
+              <button onClick={() => store.update((c) => updatePart(c, selPart.id, { turns: selPart.turns === 2 ? 1 : 2 }))}>
+                {selPart.turns === 2 ? '🌀 코일 적게 감기' : '🌀 코일 많이 감기'}
+              </button>
+            )}
+            {selPart?.kind === 'coil' && <button onClick={() => store.update((c) => flipBattery(c, selPart.id))}>🔄 감는 방향 바꾸기</button>}
             {selPart && (
               <button className="danger" onClick={removeSelected}>
                 🗑 지우기
@@ -439,6 +468,20 @@ export function Workspace({ store, sol, limits, showFlow, highlight, onBulbRemov
               ✕
             </button>
           </div>
+        )}
+
+        {onCapture && (
+          <button
+            className={`capture ${label ? 'below-label' : ''}`}
+            disabled={!circuit.parts.length}
+            onClick={async () => {
+              const img = await captureCircuit(svgRef.current!, circuit);
+              if (img) onCapture(img);
+            }}
+            aria-label="기록장에 회로 그림 저장"
+          >
+            📸<span> 기록하기</span>
+          </button>
         )}
 
         <div className="zoom">

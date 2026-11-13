@@ -1,6 +1,6 @@
 import { ARRANGEMENT_NAME, Arrangement, Hint, litBulbs } from '../engine/analysis';
 import { Solution, stars } from '../engine/solver';
-import { Circuit } from '../engine/types';
+import { Circuit, MATERIALS, MATERIAL_IDS } from '../engine/types';
 import { Mission, Observed } from '../missions';
 import { canSpeak, speak } from '../speak';
 
@@ -99,6 +99,7 @@ interface MissionProps {
   missions: Mission[];
   index: number;
   setIndex: (i: number) => void;
+  locked?: boolean;
   completed: Record<string, boolean>;
   prediction?: number;
   setPrediction: (n: number | undefined) => void;
@@ -110,14 +111,21 @@ interface MissionProps {
   arr: Arrangement;
 }
 
-export function MissionPanel({ missions, index, setIndex, completed, prediction, setPrediction, done, waitingPrediction, observed, circuit, sol, arr }: MissionProps) {
+export function MissionPanel({ missions, index, setIndex, locked, completed, prediction, setPrediction, done, waitingPrediction, observed, circuit, sol, arr }: MissionProps) {
   const m = missions[index];
   const pr = m.prediction;
   return (
     <>
       <nav className="mission-chips" aria-label="미션 고르기">
         {missions.map((mm, i) => (
-          <button key={mm.id} className={`chip ${i === index ? 'on' : ''} ${completed[mm.id] ? 'done' : ''}`} onClick={() => setIndex(i)} title={mm.title}>
+          <button
+            key={mm.id}
+            className={`chip ${i === index ? 'on' : ''} ${completed[mm.id] ? 'done' : ''}`}
+            onClick={() => setIndex(i)}
+            disabled={locked && i !== index}
+            title={mm.title}
+            aria-label={`미션 ${i + 1}. ${mm.title}`}
+          >
             {completed[mm.id] ? '✓' : i + 1}
           </button>
         ))}
@@ -134,6 +142,7 @@ export function MissionPanel({ missions, index, setIndex, completed, prediction,
             <li key={s}>{s}</li>
           ))}
         </ol>
+        {m.tip && <div className="tip">💡 {m.tip}</div>}
       </div>
 
       {waitingPrediction && (
@@ -156,6 +165,44 @@ export function MissionPanel({ missions, index, setIndex, completed, prediction,
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {m.id === 'conductor' && (
+        <div className="card">
+          <div className="card-title">📝 검사 결과</div>
+          <table className="cmp">
+            <tbody>
+              {MATERIAL_IDS.map((id) => {
+                const r = observed.tested?.[id];
+                return (
+                  <tr key={id}>
+                    <th>{MATERIALS[id].name}</th>
+                    <td>{r === undefined ? <span className="muted">아직 안 함</span> : r ? <b className="yes">⚡ 통한다</b> : <b className="no">✋ 안 통한다</b>}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {m.id.startsWith('magnet') && (
+        <div className="card">
+          <div className="card-title">📝 관찰 기록</div>
+          {m.id === 'magnet' ? (
+            <>
+              <div>{observed.magnetOn ? '✅' : '⬜'} 스위치를 닫아 클립 끌어당기기</div>
+              <div>{observed.magnetOffBySwitch ? '✅' : '⬜'} 스위치를 열어 클립이 떨어지는 것 보기</div>
+            </>
+          ) : (
+            <>
+              <div>
+                {(observed.maxClips ?? 0) >= 6 ? '✅' : '⬜'} 클립 6개 이상 끌어당기기 (지금까지 최고 {observed.maxClips ?? 0}개)
+              </div>
+              <div>{observed.poleFlipped ? '✅' : '⬜'} 전자석의 극이 바뀌는 것 보기</div>
+            </>
+          )}
         </div>
       )}
 

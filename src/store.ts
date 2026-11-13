@@ -18,11 +18,23 @@ export function loadJSON<T>(key: string, fallback: T): T {
   }
 }
 
-export function saveJSON(key: string, value: unknown) {
+export function saveJSON(key: string, value: unknown): boolean {
   try {
     localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
+    return true;
   } catch {
-    /* 저장할 수 없는 환경이면 조용히 넘어간다 */
+    /* 저장할 수 없는 환경(사생활 보호 모드, 저장 공간 부족)이면 넘어간다 */
+    return false;
+  }
+}
+
+export function clearAll() {
+  try {
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith(STORAGE_PREFIX))
+      .forEach((k) => localStorage.removeItem(k));
+  } catch {
+    /* 무시 */
   }
 }
 
